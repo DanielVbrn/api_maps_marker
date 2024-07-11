@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'src/locations.dart' as locations;
@@ -15,6 +17,12 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final Map<String, Marker> _markers = {};
+  final Completer<GoogleMapController> _mapController = Completer<GoogleMapController>();
+  final CameraPosition _initialPosition = const CameraPosition(
+    target: LatLng(-5.08886, -42.81116),
+    zoom: 10,
+  );
+
   Future<void> _onMapCreated(GoogleMapController controller) async {
     final googleOffices = await locations.getGoogleOffices();
     setState(() {
@@ -33,21 +41,49 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  void _onMapTapped(LatLng position) async {
+    final String info = await _getInfoFromCoordinates(position);
+    setState(() {
+      final marker = Marker(
+        markerId: const MarkerId("selected_marker"),
+        position: position,
+        infoWindow: InfoWindow(
+          title: "Informações",
+          snippet: info,
+        ),
+      );
+      _markers["selected_marker"] = marker;
+    });
+  }
+
+  Future<String> _getInfoFromCoordinates(LatLng position) async {
+    // Implemente a lógica para obter informações baseadas nas coordenadas
+    // Aqui estou retornando uma string de exemplo, mas você pode buscar de um serviço ou banco de dados
+    return "Latitude: ${position.latitude}, Longitude: ${position.longitude}";
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
           title: const Text('Google Office Locations'),
-          backgroundColor: Colors.green[700],
+          centerTitle: true,
+          titleTextStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+          backgroundColor: const Color.fromARGB(255, 0, 221, 66),
         ),
         body: GoogleMap(
-          onMapCreated: _onMapCreated,
-          initialCameraPosition: const CameraPosition(
-            target: LatLng(0, 0),
-            zoom: 2,
-          ),
+          initialCameraPosition: _initialPosition,
+          onMapCreated: (controller) {
+            _mapController.complete(controller);
+            _onMapCreated(controller);
+          },
           markers: _markers.values.toSet(),
+          onTap: _onMapTapped,
         ),
       ),
     );
